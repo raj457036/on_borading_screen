@@ -102,7 +102,8 @@ class OnBoarding extends StatefulWidget {
   final double childDotSize;
   final double parentDotSize;
   final double nonActiveChildDotSize;
-  final bool tapDotToSwitchPage;
+  final bool tapDotToSwitchPage, swipeToChangeSlide;
+  final double swipeVelocity;
 
   const OnBoarding({
     Key? key,
@@ -116,6 +117,8 @@ class OnBoarding extends StatefulWidget {
     this.parentDotSize = 15,
     this.nonActiveChildDotSize = 0,
     this.tapDotToSwitchPage = true,
+    this.swipeToChangeSlide = true,
+    this.swipeVelocity = 200,
   }) : super(key: key);
 
   @override
@@ -143,24 +146,31 @@ class _OnBoardingState extends State<OnBoarding> {
 
   @override
   Widget build(BuildContext context) {
+    Widget child = PageTransitionSwitcher(
+      transitionBuilder: (
+        Widget child,
+        Animation<double> animation,
+        Animation<double> secondaryAnimation,
+      ) {
+        return FadeThroughTransition(
+          animation: animation,
+          secondaryAnimation: secondaryAnimation,
+          child: child,
+        );
+      },
+      child: widget.pages[_activeIndex],
+    );
+
+    if (widget.swipeToChangeSlide) {
+      child = GestureDetector(
+        onHorizontalDragEnd: onSwipe,
+        child: child,
+      );
+    }
+
     return Column(
       children: [
-        Expanded(
-          child: PageTransitionSwitcher(
-            transitionBuilder: (
-              Widget child,
-              Animation<double> animation,
-              Animation<double> secondaryAnimation,
-            ) {
-              return FadeThroughTransition(
-                animation: animation,
-                secondaryAnimation: secondaryAnimation,
-                child: child,
-              );
-            },
-            child: widget.pages[_activeIndex],
-          ),
-        ),
+        Expanded(child: child),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.center,
@@ -190,6 +200,16 @@ class _OnBoardingState extends State<OnBoarding> {
         )
       ],
     );
+  }
+
+  void onSwipe(detail) {
+    final x = detail.velocity.pixelsPerSecond.dx;
+
+    if (x > widget.swipeVelocity) {
+      _controller.previousPage();
+    } else if (x < -widget.swipeVelocity) {
+      _controller.nextPage();
+    }
   }
 
   @override
